@@ -1,24 +1,21 @@
-import com.itdotaer.netty.rpc.client.RpcClient;
-import com.itdotaer.netty.rpc.client.RpcClientHandler;
-import com.itdotaer.netty.rpc.client.RpcRequestProxy;
+package com.itdotaer.netty.rpc.client;
+
 import com.itdotaer.netty.rpc.common.service.HelloService;
 
 import java.lang.reflect.Proxy;
 
 /**
- * Main
+ * com.itdotaer.netty.rpc.client.Main
  *
  * @author jt_hu
  * @date 2018/9/30
  */
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
         RpcClient rpcClient = new RpcClient();
 
-        rpcClient.start("127.0.0.1", 8080);
-
-        RpcClientHandler rpcClientHandler = rpcClient.chooseHandler();
+        RpcClientHandler rpcClientHandler = rpcClient.start(HelloService.class.getName());
 
         HelloService helloService = (HelloService) Proxy.newProxyInstance(HelloService.class.getClassLoader(),
                 new Class<?>[]{HelloService.class},
