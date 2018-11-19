@@ -58,12 +58,7 @@ public class RpcClientHandler extends SimpleChannelInboundHandler {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
         pendingRpc.put(request.getRequestId(), new RpcFuture());
-        channel.writeAndFlush(request).addListener(new ChannelFutureListener(){
-            @Override
-            public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                countDownLatch.countDown();
-            }
-        });
+        channel.writeAndFlush(request).addListener((ChannelFutureListener) channelFuture -> countDownLatch.countDown());
 
         try {
             countDownLatch.await();

@@ -1,6 +1,6 @@
 package com.itdotaer.netty.rpc.server;
 
-import com.itdotaer.netty.rpc.common.rpc.RpcBase;
+import com.itdotaer.netty.rpc.utils.RegisterHelper;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  * @author jt_hu
  * @date 2018/9/30
  */
-public class RpcServer implements RpcBase {
+public class RpcServer {
 
     private static Logger logger = LoggerFactory.getLogger(RpcServer.class);
 
@@ -34,7 +34,6 @@ public class RpcServer implements RpcBase {
     /**
      * 准备nio groups
      */
-    @Override
     public synchronized void prepareWorkGroup() {
         if (isStop) {
             bossGroup = new NioEventLoopGroup();
@@ -49,7 +48,7 @@ public class RpcServer implements RpcBase {
     /**
      * 绑定端口和注册处理方法
      */
-    private void bind(int port) {
+    private void bind(String serviceName, String address, int port) {
         ServerBootstrap bootstrap = new ServerBootstrap();
 
         bootstrap.group(bossGroup, workerGroup)
@@ -72,6 +71,7 @@ public class RpcServer implements RpcBase {
 
         try {
             ChannelFuture future = bootstrap.bind(port).sync();
+            RegisterHelper.foundProvider(serviceName, address, port);
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             logger.error(RpcServer.class.getSimpleName() + "->bind", e);
@@ -81,17 +81,14 @@ public class RpcServer implements RpcBase {
     /**
      * 启动方法
      */
-    @Override
-    public void start(String address, int port) {
+    public void start(String serviceName, String address, int port) {
         prepareWorkGroup();
-
-        bind(port);
+        bind(serviceName, address, port);
     }
 
     /**
      * 停止方法
      */
-    @Override
     public void stop() {
         synchronized (isStop) {
             if (isStop) {

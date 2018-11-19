@@ -1,7 +1,12 @@
 package com.itdotaer.netty.rpc.client;
 
+import com.itdotaer.netty.rpc.models.RegisterModel;
+import com.itdotaer.netty.rpc.utils.RegisterHelper;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -13,8 +18,6 @@ import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-
 /**
  * RpcClient
  *
@@ -24,27 +27,26 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class RpcClient {
 
     private static Logger logger = LoggerFactory.getLogger(RpcClient.class);
-    private CopyOnWriteArrayList<RpcClientHandler> connectedHandlers = new CopyOnWriteArrayList<>();
     private volatile EventLoopGroup group;
 
-    public RpcClientHandler chooseHandler() throws InterruptedException {
-        while (connectedHandlers.size() == 0) {
-            Thread.sleep(10L);
-        }
-
-        return connectedHandlers.get(0);
-    }
 
     public synchronized void prepareWorkGroup() {
         group = new NioEventLoopGroup();
     }
 
-    public void start(String address, int port) {
+    public RpcClientHandler start(String serviceName) throws Exception {
         prepareWorkGroup();
-        connect(address, port);
+
+        // load balance
+        RegisterModel chosenProvider = LoadBalance.getBalancedHost(serviceName);
+
+        RpcClientHandler rpcClientHandler = connect(chosenProvider.getHost(), chosenProvider.getPort());
+        RegisterHelper.foundConsumer(serviceName, chosenProvider.getHost(), chosenProvider.getPort());
+
+        return rpcClientHandler;
     }
 
-    private void connect(String address, int port) {
+    private RpcClientHandler connect(String address, int port) throws InterruptedException {
         Bootstrap bootstrap = new Bootstrap();
 
         bootstrap.group(group)
@@ -61,15 +63,10 @@ public class RpcClient {
                     }
                 });
 
-        ChannelFuture channelFuture = bootstrap.connect(address, port);
-        channelFuture.addListener((ChannelFutureListener) channelFuture1 -> {
-            if (channelFuture1.isSuccess()) {
-                logger.debug("Successfully connect to remote server. ");
-                RpcClientHandler handler = channelFuture.channel().pipeline().get(RpcClientHandler.class);
+        ChannelFuture channelFuture = bootstrap.connect(address, port).sync();
 
-                connectedHandlers.add(handler);
-            }
-        });
+        return channelFuture.channel().pipeline().get(RpcClientHandler.class);
+
     }
 
     public void stop() {

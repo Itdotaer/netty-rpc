@@ -10,7 +10,7 @@ public interface RpcBase {
 
     void prepareWorkGroup();
 
-    void start(String address, int port);
+    void start(String serviceName, String address, int port);
 
     void stop();
 
