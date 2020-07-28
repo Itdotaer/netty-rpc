@@ -13,6 +13,7 @@
         <module>netty-rpc-client</module>
         <module>netty-rpc-common</module>
         <module>netty-rpc-register</module>
+        <module>netty-rpc-test</module>
     </modules>
 
     <properties>
@@ -21,8 +22,9 @@
         <slf4j.api.version>1.7.25</slf4j.api.version>
         <logback.version>1.1.7</logback.version>
         <zk.version>3.4.13</zk.version>
-        <zkClient.version>0.11</zkClient.version>
+        <curator.framework.version>4.0.1</curator.framework.version>
         <apache.commons.version>4.1</apache.commons.version>
+        <hessian.version>4.0.38</hessian.version>
         <junit.version>4.12</junit.version>
     </properties>
 
@@ -47,6 +49,12 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
@@ -65,18 +73,22 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${zk.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-log4j12</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
-                <groupId>com.101tec</groupId>
-                <artifactId>zkclient</artifactId>
-                <version>${zkClient.version}</version>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-framework</artifactId>
+                <version>${curator.framework.version}</version>
             </dependency>
-
             <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
+                <groupId>com.caucho</groupId>
+                <artifactId>hessian</artifactId>
+                <version>${hessian.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

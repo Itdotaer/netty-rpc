@@ -1,7 +1,8 @@
 package com.itdotaer.netty.rpc.client;
 
+import com.itdotaer.netty.rpc.RegisterFactoryProducer;
 import com.itdotaer.netty.rpc.models.RegisterModel;
-import com.itdotaer.netty.rpc.utils.RegisterHelper;
+import com.itdotaer.netty.rpc.models.RegisterType;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.Random;
 public class LoadBalance {
 
     public static RegisterModel getBalancedHost(String serviceName) throws Exception {
-        List<String> providers = RegisterHelper.queryProviders(serviceName);
+        List<String> providers = RegisterFactoryProducer.getFactory(RegisterType.ZOOKEEPER).queryProviders(serviceName);
         if (CollectionUtils.isEmpty(providers)) {
             throw new Exception("no providers");
         }

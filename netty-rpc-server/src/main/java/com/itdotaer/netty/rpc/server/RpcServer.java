@@ -1,6 +1,10 @@
 package com.itdotaer.netty.rpc.server;
 
-import com.itdotaer.netty.rpc.utils.RegisterHelper;
+import com.itdotaer.netty.rpc.AbstractRegisterFactory;
+import com.itdotaer.netty.rpc.RegisterFactoryProducer;
+import com.itdotaer.netty.rpc.common.coders.Decoder;
+import com.itdotaer.netty.rpc.common.coders.Encoder;
+import com.itdotaer.netty.rpc.models.RegisterType;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -9,9 +13,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
@@ -23,21 +24,33 @@ import org.slf4j.LoggerFactory;
  * @author jt_hu
  * @date 2018/9/30
  */
-public class RpcServer {
+public class RpcServer<T> {
 
-    private static Logger logger = LoggerFactory.getLogger(RpcServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(RpcServer.class);
+    private static AbstractRegisterFactory registerFactory = RegisterFactoryProducer.getFactory(RegisterType.ZOOKEEPER);
 
     private volatile EventLoopGroup bossGroup;
     private volatile EventLoopGroup workerGroup;
     private volatile Boolean isStop = true;
+
+    private String interfaceId;
+    private T ref;
+
+    public RpcServer(String interfaceId) {
+        this.interfaceId = interfaceId;
+    }
+
+    public void setRef(T ref) {
+        this.ref = ref;
+    }
 
     /**
      * 准备nio groups
      */
     public synchronized void prepareWorkGroup() {
         if (isStop) {
-            bossGroup = new NioEventLoopGroup();
-            workerGroup = new NioEventLoopGroup();
+            bossGroup = new NioEventLoopGroup(1);
+            workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() * 2);
 
             logger.info(RpcServer.class.getSimpleName() + " worker groups were prepared.");
         } else {
@@ -54,14 +67,13 @@ public class RpcServer {
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .option(ChannelOption.SO_BACKLOG, 1000)
-                .handler(new LoggingHandler(LogLevel.INFO))
+                .handler(new LoggingHandler(LogLevel.ERROR))
                 .childHandler(new ChannelInitializer<SocketChannel>(){
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        socketChannel.pipeline().addLast(new ObjectDecoder(1024 * 1024,
-                                ClassResolvers.weakCachingConcurrentResolver(this.getClass().getClassLoader())));
-                        socketChannel.pipeline().addLast(new ObjectEncoder());
-                        socketChannel.pipeline().addLast(new RpcServerHandler());
+                        socketChannel.pipeline().addLast(new Decoder());
+                        socketChannel.pipeline().addLast(new Encoder());
+                        socketChannel.pipeline().addLast(new RpcServerHandler(interfaceId, ref));
                     }
                 });
 
@@ -71,7 +83,7 @@ public class RpcServer {
 
         try {
             ChannelFuture future = bootstrap.bind(port).sync();
-            RegisterHelper.foundProvider(serviceName, address, port);
+            registerFactory.foundProvider(serviceName, address, port);
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             logger.error(RpcServer.class.getSimpleName() + "->bind", e);
@@ -81,9 +93,9 @@ public class RpcServer {
     /**
      * 启动方法
      */
-    public void start(String serviceName, String address, int port) {
+    public void start(String address, int port) {
         prepareWorkGroup();
-        bind(serviceName, address, port);
+        bind(interfaceId, address, port);
     }
 
     /**

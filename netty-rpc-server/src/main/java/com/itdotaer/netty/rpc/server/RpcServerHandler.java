@@ -2,8 +2,6 @@ package com.itdotaer.netty.rpc.server;
 
 import com.itdotaer.netty.rpc.common.dtos.RpcRequest;
 import com.itdotaer.netty.rpc.common.dtos.RpcResponse;
-import com.itdotaer.netty.rpc.common.service.HelloService;
-import com.itdotaer.netty.rpc.common.service.HelloServiceImpl;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.slf4j.Logger;
@@ -18,10 +16,17 @@ import java.lang.reflect.Method;
  * @author jt_hu
  * @date 2018/9/30
  */
-public class RpcServerHandler extends SimpleChannelInboundHandler {
+public class RpcServerHandler<T> extends SimpleChannelInboundHandler {
 
     private static Logger logger = LoggerFactory.getLogger(RpcServerHandler.class);
 
+    private String interfaceId;
+    private T ref;
+
+    public RpcServerHandler(String interfaceId, T ref) {
+        this.interfaceId = interfaceId;
+        this.ref = ref;
+    }
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object o) throws Exception {
         logger.info("RpcServerHandler->channelRead0", o);
@@ -34,16 +39,13 @@ public class RpcServerHandler extends SimpleChannelInboundHandler {
         RpcResponse response = new RpcResponse();
         response.setRequestId(request.getRequestId());
 
-        if (HelloService.class.getName().equals(request.getClassName())) {
+        if (interfaceId.equals(request.getClassName())) {
             try {
-                Object object = Class.forName(HelloServiceImpl.class.getName()).newInstance();
-                Method method = HelloServiceImpl.class.getMethod(request.getMethodName(), request.getParameterTypes());
+                Method method = ref.getClass().getMethod(request.getMethodName(), request.getParameterTypes());
 
-                Object result = method.invoke(object, request.getParameters());
+                Object result = method.invoke(ref, request.getParameters());
                 response.setResult(result);
-            } catch (ClassNotFoundException
-                    | IllegalAccessException
-                    | InstantiationException
+            } catch (IllegalAccessException
                     | NoSuchMethodException
                     | InvocationTargetException e) {
                 logger.error("RpcServerHandler->process", e);

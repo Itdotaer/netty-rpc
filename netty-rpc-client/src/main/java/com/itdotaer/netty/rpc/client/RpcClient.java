@@ -1,7 +1,11 @@
 package com.itdotaer.netty.rpc.client;
 
+import com.itdotaer.netty.rpc.AbstractRegisterFactory;
+import com.itdotaer.netty.rpc.RegisterFactoryProducer;
+import com.itdotaer.netty.rpc.common.coders.Decoder;
+import com.itdotaer.netty.rpc.common.coders.Encoder;
 import com.itdotaer.netty.rpc.models.RegisterModel;
-import com.itdotaer.netty.rpc.utils.RegisterHelper;
+import com.itdotaer.netty.rpc.models.RegisterType;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -10,9 +14,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
@@ -26,9 +27,11 @@ import org.slf4j.LoggerFactory;
  */
 public class RpcClient {
 
-    private static Logger logger = LoggerFactory.getLogger(RpcClient.class);
-    private volatile EventLoopGroup group;
+    private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
+    private static AbstractRegisterFactory registerFactory = RegisterFactoryProducer.getFactory(RegisterType.ZOOKEEPER);
+
+    private volatile EventLoopGroup group;
 
     public synchronized void prepareWorkGroup() {
         group = new NioEventLoopGroup();
@@ -41,7 +44,7 @@ public class RpcClient {
         RegisterModel chosenProvider = LoadBalance.getBalancedHost(serviceName);
 
         RpcClientHandler rpcClientHandler = connect(chosenProvider.getHost(), chosenProvider.getPort());
-        RegisterHelper.foundConsumer(serviceName, chosenProvider.getHost(), chosenProvider.getPort());
+        registerFactory.foundConsumer(serviceName, chosenProvider.getHost(), chosenProvider.getPort());
 
         return rpcClientHandler;
     }
@@ -56,9 +59,8 @@ public class RpcClient {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
                         socketChannel.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
-                        socketChannel.pipeline().addLast(new ObjectDecoder(1024,
-                                ClassResolvers.cacheDisabled(this.getClass().getClassLoader())));
-                        socketChannel.pipeline().addLast(new ObjectEncoder());
+                        socketChannel.pipeline().addLast(new Decoder());
+                        socketChannel.pipeline().addLast(new Encoder());
                         socketChannel.pipeline().addLast(new RpcClientHandler());
                     }
                 });
