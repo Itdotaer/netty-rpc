@@ -25,7 +25,7 @@
         <curator.framework.version>4.0.1</curator.framework.version>
         <apache.commons.version>4.1</apache.commons.version>
         <hessian.version>4.0.38</hessian.version>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
     </properties>
 
     <dependencies>
